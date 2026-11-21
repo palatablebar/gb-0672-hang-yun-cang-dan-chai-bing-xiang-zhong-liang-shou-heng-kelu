@@ -2,7 +2,7 @@
 
 给货代单证员使用。主提单与分提单拆并形成有向无环关系，件数和净毛重逐层守恒。
 
-七个业务模块：舱单采信、包装映射、拆并编组、危险品检查、净毛重核验、报关对账、版本封存。
+八个业务模块：舱单采信、包装映射、拆并编组、危险品检查、净毛重核验、报关对账、箱门重量交接、版本封存。
 
 ```sh
 docker compose up --build -d
@@ -11,7 +11,11 @@ docker compose exec -T app pytest -q
 
 访问 http://localhost:18241 。启动直接载入现场脏批。切换干净样例和旧编码样例可对照核验。干净批42个节点、6个主单，件数240、净重2400kg、毛重2640kg；现场脏批包含父级缺失、依赖环、危险品不相容及1kg毛重差异，封存状态为待处理。
 
-各模块页面对应 `/<模块英文名>`，各模块执行入口为 `POST /api/<模块英文名>`，不传参即可独立演示。完整运行 `POST /api/runs` 支持 `dataset`（dirty/clean/legacy）、`csv_text` 与 `overrides` 参数。批次历史 `GET /api/runs`，详情 `GET /api/runs/{run_id}`。
+每个样例另附三类箱门证据：`weighing_<样例>.csv`（码头整箱毛重与称重时封签）、`tare_<样例>.csv`（皮重台账）、`seal_<样例>.csv`（申报封签台账）。箱内货毛重=整箱毛重-皮重，只有可复核且与舱单逐箱对得上才改用称重口径；否则保留原申报货重并阻断，原封签始终以封签台账为准。
+
+各模块页面对应 `/<模块英文名>`，各模块执行入口为 `POST /api/<模块英文名>`，不传参即可独立演示。完整运行 `POST /api/runs` 支持 `dataset`（dirty/clean/legacy）、`evidence_dataset`、`csv_text` 与 `overrides` 参数。批次历史 `GET /api/runs`，详情 `GET /api/runs/{run_id}`。
+
+箱门口径切换 `POST /api/runs/{run_id}/switch`，请求体 `{"revision": 1, "handover": {"switches": [{"container": "C004", "basis": "weighing", "note": "码头复磅"}]}}`。指令是整批决定的全集：本次点到的箱覆盖同名箱，未点到的沿用原决定。同一指令重试不新增版本；校验不过返回 422 且旧版原样保留。版本列表 `GET /api/runs/{run_id}/versions`，回退 `POST /api/runs/{run_id}/restore`（只移动当前指针，不删除历史版本，封签来自不可变输入快照）。
 
 同输入与规则版本生成相同批号，只保留一条批次。复核入口 `POST /api/runs/{run_id}/review` 提交当前 `revision`，陈旧提交409。归档包只有一个下载入口 `GET /api/export/{run_id}`，含证据和运行摘要。原始隔离在页面同屏显示。
 

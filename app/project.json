@@ -10,6 +10,7 @@
     "危险品检查",
     "净毛重核验",
     "报关对账",
+    "箱门重量交接",
     "版本封存"
   ],
   "rule": "主提单与分提单拆并形成有向无环关系，件数和净毛重逐层守恒",
@@ -29,6 +30,7 @@
     "hazard",
     "weight",
     "reconcile",
+    "handover",
     "archive"
   ],
   "labels": {
@@ -63,6 +65,24 @@
     "graph_errors": "关系错误",
     "weight_errors": "重量差异",
     "child": "子单号",
-    "classes": "危险类组合"
+    "classes": "危险类组合",
+    "seal": "封签号",
+    "seal_source": "封签来源",
+    "terminal_gross_kg": "码头整箱毛重 kg",
+    "tare_kg": "皮重 kg",
+    "cargo_gross_kg": "箱内货毛重 kg",
+    "declared_gross_kg": "申报货毛重 kg",
+    "manifest_net_kg": "舱单货净重 kg",
+    "delta_kg": "差异 kg",
+    "verdict": "交接结论",
+    "blocker": "阻断原因",
+    "basis": "采用口径",
+    "chain_before": "拆并前",
+    "chain_after": "拆并后",
+    "evidence": "证据",
+    "node_count": "节点数",
+    "seal_match": "封签一致",
+    "weighed": "已有称重",
+    "sequence": "交接顺序"
   }
 }

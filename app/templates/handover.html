@@ -1,0 +1,79 @@
+{% extends 'base.html' %}{% block content %}
+{% set sheet = state.handover %}
+{% set conservation = sheet.conservation %}
+<div class="sheet-grid">
+  <section class="panel index">
+    <h2>装箱索引<sup>1</sup></h2>
+    {% for root in state.graph.roots %}<details open><summary>{{ root }}</summary>{% for child in state.graph.children[root] %}<div class="branch">{{ child }}<small>{{ state.graph.children[child]|length }} 项</small></div>{% endfor %}</details>{% endfor %}
+  </section>
+  <section class="panel data-panel">
+    <h2>箱门重量交接单<sup>2</sup><small>{{ view.rows|length }} 箱</small></h2>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th>顺序</th><th>箱号</th><th>交接结论</th><th>采用口径</th><th>申报封签</th><th>称重封签</th><th>封签一致</th>
+        <th>码头整箱毛重 kg</th><th>皮重 kg</th><th>箱内货毛重 kg</th><th>舱单货净重 kg</th><th>申报货毛重 kg</th><th>差异 kg</th>
+        <th>拆并前</th><th>拆并后</th><th>阻断原因</th><th>证据</th><th>口径动作</th>
+      </tr></thead>
+      <tbody>
+      {% for row in view.rows %}
+        <tr class="{% if row['verdict'] != '可交接' %}row-blocked{% endif %}">
+          <td class="num">{{ row['sequence'] }}</td>
+          <td>{{ row['container'] }}</td>
+          <td class="{% if row['verdict'] == '可交接' %}ok{% else %}fail{% endif %}">{{ row['verdict'] }}</td>
+          <td>{{ row['basis'] }}<small class="basis-note">{{ row['basis_note'] }}</small></td>
+          <td>{{ row['seal'] or '—' }}</td>
+          <td>{{ row['weighed_seal'] or '—' }}</td>
+          <td class="{% if row['seal_match'] == '不一致' %}fail{% endif %}">{{ row['seal_match'] }}</td>
+          <td class="num">{{ row['terminal_gross_kg'] or '—' }}</td>
+          <td class="num">{{ row['tare_kg'] or '—' }}</td>
+          <td class="num">{{ row['cargo_gross_kg'] or '—' }}</td>
+          <td class="num">{{ row['manifest_net_kg'] }}</td>
+          <td class="num">{{ row['manifest_gross_kg'] }}</td>
+          <td class="num {% if row['delta_kg'] not in ('', '0') %}fail{% endif %}">{{ row['delta_kg'] or '—' }}</td>
+          <td>{{ row['chain_before'] }}</td>
+          <td>{{ row['chain_after'] }}</td>
+          <td class="blocker">{{ row['blocker'] }}</td>
+          <td class="evidence">{{ row['evidence'] }}</td>
+          <td class="actions">
+            {% if row['basis_code'] == 'declared' and row['can_switch_weighing'] %}
+              <button type="button" data-container="{{ row['container'] }}" data-switch-basis="weighing" data-delta="{{ row['delta_kg'] }}">改称重</button>
+            {% elif row['basis_code'] == 'weighing' %}
+              <button type="button" data-container="{{ row['container'] }}" data-switch-basis="declared" data-delta="{{ row['delta_kg'] }}">保申报</button>
+            {% else %}<span class="muted">不可切</span>{% endif %}
+          </td>
+        </tr>
+      {% else %}<tr><td>暂无出港箱。</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  <div class="right-column">
+    <section class="panel">
+      <h2>守恒核对</h2>
+      <div class="checkline"><b>拆并前</b><span>{{ conservation.before.roots }} 主单 / {{ conservation.before.pieces }} 件</span><span>{{ conservation.before.net_kg }} / {{ conservation.before.gross_kg }} kg</span></div>
+      <div class="checkline"><b>拆并后</b><span>{{ conservation.after.containers }} 箱 / {{ conservation.after.pieces }} 件</span><span>{{ conservation.after.net_kg }} / {{ conservation.after.gross_kg }} kg</span></div>
+      <div class="checkline"><b>差异</b><span>件 {{ conservation.difference.pieces }}</span><span class="{% if not conservation.reconciled %}fail{% endif %}">净 {{ conservation.difference.net_kg }} / 毛 {{ conservation.difference.gross_kg }}</span></div>
+      <div class="checkline"><b>件净毛只计一次</b><span>结构</span><span class="{% if conservation.counted_once %}ok{% else %}fail{% endif %}">{{ '是' if conservation.counted_once else '否' }}</span></div>
+      <div class="checkline"><b>申报对账</b><span>逐层</span><span class="{% if conservation.reconciled %}ok{% else %}fail{% endif %}">{{ '平' if conservation.reconciled else '不平' }}</span></div>
+      {% if conservation.duplicated %}<div class="checkline"><b>重复计数</b><span>{{ conservation.duplicated|join('、') }}</span><span class="fail">阻断</span></div>{% endif %}
+      {% if conservation.unrooted %}<div class="checkline"><b>无主单节点</b><span>{{ conservation.unrooted|join('、') }}</span><span class="fail">不计入</span></div>{% endif %}
+      {% if conservation.missing_container %}<div class="checkline"><b>缺箱号</b><span>{{ conservation.missing_container|join('、') }}</span><span class="fail">阻断</span></div>{% endif %}
+      <p class="policy">{{ conservation.policy }} 容差 {{ conservation.tolerance_kg }} kg。</p>
+    </section>
+    <section class="panel">
+      <h2>证据来源<sup>3</sup></h2>
+      <div class="checkline"><b>称重记录</b><span>{{ sheet.evidence_meta.weighing.rows }} 行 / {{ sheet.evidence_meta.weighing.encoding or '无' }}</span><span>{{ sheet.evidence_meta.weighing.name }}</span></div>
+      <div class="checkline"><b>皮重台账</b><span>{{ sheet.evidence_meta.tare.rows }} 行 / {{ sheet.evidence_meta.tare.encoding or '无' }}</span><span>{{ sheet.evidence_meta.tare.name }}</span></div>
+      <div class="checkline"><b>封签台账</b><span>{{ sheet.evidence_meta.seal.rows }} 行 / {{ sheet.evidence_meta.seal.encoding or '无' }}</span><span>{{ sheet.evidence_meta.seal.name }}</span></div>
+      {% if sheet.evidence_rejected %}<div class="checkline"><b>隔离证据</b><span>{{ sheet.evidence_rejected|length }} 条</span><span class="fail">见交接单</span></div>{% endif %}
+    </section>
+    <section class="panel">
+      <h2>口径切换与回退</h2>
+      <p class="policy">同一指令重试不新增版本；切换校验不过则整批回滚，原封签保持可读。</p>
+      <div class="version-list" id="version-list"><span class="muted">版本加载中…</span></div>
+      <button id="restore-latest" type="button">恢复最近版本</button>
+    </section>
+    <section class="panel"><h2>阻断凭据</h2>{{ records(state.hazard_issues+state.graph.errors) }}</section>
+    <section class="panel"><h2>采信隔离</h2>{{ records(state.quarantine) }}</section>
+  </div>
+</div>
+{% endblock %}

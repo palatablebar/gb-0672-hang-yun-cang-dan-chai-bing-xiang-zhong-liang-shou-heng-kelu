@@ -28,5 +28,8 @@
     "pieces": 240,
     "net_kg": "2400",
     "gross_kg": "2640"
+  },
+  "handover": {
+    "tolerance_kg": "0"
   }
 }
